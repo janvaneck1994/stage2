@@ -1,9 +1,10 @@
 import torch
-from torch_geometric.data import InMemoryDataset, download_url
-from torch_geometric.io import read_npz
+from torch_geometric.data import InMemoryDataset
+from torch_geometric.data import Data
+import numpy as np
+import pandas as pd
 
-
-class Amazon(InMemoryDataset):
+class Interactomes(InMemoryDataset):
     r"""
     Args:
         root (string): Root directory where the dataset should be saved.
@@ -24,7 +25,7 @@ class Amazon(InMemoryDataset):
     def __init__(self, root, name, transform=None, pre_transform=None):
         self.name = name.lower()
         assert self.name in ['human']
-        super(Amazon, self).__init__(root, transform, pre_transform)
+        super(Interactomes, self).__init__(root, transform, pre_transform)
         self.data, self.slices = torch.load(self.processed_paths[0])
 
     @property
@@ -36,27 +37,32 @@ class Amazon(InMemoryDataset):
 
     @property
     def processed_file_names(self):
-        return 'data_{}_interactome.pt'.format(self.name)
+        return '{}_interactome.pt'.format(self.name)
 
     def process(self):
 
         embeddings = np.load(self.raw_paths[0])
         proteins = embeddings.files
-        embeddings_matrix = np.array([embeddings[x] for x in proteins])
 
-        idx_mapping = {x:i for i,x in enumerate(proteins)}
-
-        ppis = pd.read_csv(self.raw_paths[1])
+        ppis = pd.read_csv(self.raw_paths[1], header=None)
         ppis = ppis[ppis.isin(proteins).all(axis=1)]
+        intact_prots = list(set(ppis.values.flatten()))
+
+        embeddings_matrix = np.array([embeddings[x] for x in intact_prots])
+
+        idx_mapping = {x:i for i,x in enumerate(intact_prots)}
 
         ppis_idx = ppis.applymap(lambda x: idx_mapping[x])
-        undirected_ppis_idx = pd.concat([ppis_idx,ppis_idx.iloc[:, ::-1]])
+        reversed = ppis_idx.iloc[:, ::-1]
+        reversed.columns = [0, 1]
+        undirected_ppis_idx = pd.concat([ppis_idx,reversed])
+        
         edges = undirected_ppis_idx.values
 
         edge_index = torch.tensor(edges, dtype=torch.long)
         x = torch.tensor(embeddings_matrix, dtype=torch.float)
         data = Data(x=x, edge_index=edge_index.t().contiguous())
-
+        data.protein_names = intact_prots
         data = data if self.pre_transform is None else self.pre_transform(data)
 
         data, slices = self.collate([data])

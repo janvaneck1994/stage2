@@ -155,7 +155,7 @@ with h5py.File(embedding_file, "r") as f:
 
 #for every cross validation
 for cv in range(10):
-    for model_name in ['GNN_one-vec','GNN_ProtBert','FFNN']:
+    for model_name in ['GNN_one-hot','GNN_ProtBert','FFNN']:
         print(cv, model_name)
 
         # undersampling ratios data
@@ -179,7 +179,7 @@ for cv in range(10):
             features_eye = torch.FloatTensor(np.eye(num_nodes))
 
         # set features and epochs for each model
-        if model_name == 'GNN_one-vec':
+        if model_name == 'GNN_one-hot':
             epochs = 750
             features = features_eye
             model = GCNModel(features.shape[1]).to(device)

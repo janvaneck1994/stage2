@@ -69,7 +69,7 @@ for cv in range(10):
         df['label'] = y_test
         df['score'] = y_pred
 
-        output = results_path + 'cv/'+str(cv)+'/'+str(i)+'/DT/'
+        output = results_path + 'cv/'+str(cv)+'/'+str(i)+'/LR/'
         if not os.path.exists(output):
             os.makedirs(output)
 
